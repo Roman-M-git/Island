@@ -2,6 +2,8 @@ package Fauna.AllHerbivores;
 
 import Fauna.Animal;
 
+import java.util.List;
+
 public abstract class Herbivores extends Animal {
 
     public Herbivores(String name, double maxWeight, int maxCountOnCell, int speed, double foodNeed) {
