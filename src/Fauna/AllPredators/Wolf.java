@@ -1,20 +1,23 @@
 package Fauna.AllPredators;
 
-import Fauna.AllHerbivores.Rabbit;
 import Fauna.Animal;
-
 
 public class Wolf extends Predators {
 
-    public Wolf(){
+    public Wolf() {
         super("Wolf", 50, 30, 3, 8);
-        this.maxAge=30;
+        setMaxAge(50);
     }
+
     @Override
     protected double getEatChance(Animal prey) {
-        if (prey instanceof Rabbit) return 0.6;
-
-        return 0.0;
+        // Упрощённая таблица вероятностей
+        return switch (prey.getName()) {
+            case "Rabbit" -> 0.6;
+            case "Mouse" -> 0.8;
+            case "Goat", "Sheep" -> 0.7;
+            default -> 0.0;
+        };
     }
 
     @Override
