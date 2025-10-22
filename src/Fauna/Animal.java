@@ -1,5 +1,11 @@
 package Fauna;
 
+import MapEngine.Coordinate;
+import MapEngine.Island;
+
+import java.util.List;
+import java.util.Random;
+
 public abstract class Animal {
     // ==== Основные характеристики ====
     protected String name;                // Название животного
@@ -42,7 +48,7 @@ public abstract class Animal {
         int newY = Math.max(0, Math.min(island.getHeight() - 1, position.y + dy));
 
         position = new Coordinate(newX, newY);
-        System.out.println(name + " переместился на " + newX + "," + newY);
+        System.out.println(name + " moved " + newX + "," + newY);
     }
 
     /** Поесть — базовый вариант (будет переопределяться у потомков) */
@@ -55,7 +61,7 @@ public abstract class Animal {
 
         if (random.nextDouble() < 0.3) { // шанс на размножение
             Animal child = createChild();
-            System.out.println(name + " размножился → " + child.getName());
+            System.out.println(name + " has multiplied → " + child.getName());
             return child;
         }
         return null;
@@ -65,7 +71,7 @@ public abstract class Animal {
     public void deathFromOldAge() {
         if (age > maxAge || hunger <= 0) {
             alive = false;
-            System.out.println(name + " умер");
+            System.out.println(name + " RIP");
         }
     }
 
@@ -82,14 +88,38 @@ public abstract class Animal {
     /** Создание детеныша (реализуется в конкретном классе) */
     protected abstract Animal createChild();
 
-    // ==== Геттеры/сеттеры ====
+    // ==== Геттеры и сеттеры ====
 
     public String getName() {
         return name;
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
     public boolean isAlive() {
         return alive;
+    }
+
+    public void setAlive(boolean alive) {
+        this.alive = alive;
+    }
+
+    public double getHunger() {
+        return hunger;
+    }
+
+    public void setHunger(double hunger) {
+        this.hunger = hunger;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
     }
 
     public Coordinate getPosition() {
@@ -99,6 +129,52 @@ public abstract class Animal {
     public void setPosition(Coordinate position) {
         this.position = position;
     }
+
+    public double getWeight() {
+        return weight;
+    }
+
+    public void setWeight(double weight) {
+        this.weight = weight;
+    }
+
+    public double getMaxWeight() {
+        return maxWeight;
+    }
+
+    public void setMaxWeight(double maxWeight) {
+        this.maxWeight = maxWeight;
+    }
+
+    public int getMaxCountOnCell() {
+        return maxCountOnCell;
+    }
+
+    public void setMaxCountOnCell(int maxCountOnCell) {
+        this.maxCountOnCell = maxCountOnCell;
+    }
+
+    public int getSpeed() {
+        return speed;
+    }
+
+    public void setSpeed(int speed) {
+        this.speed = speed;
+    }
+
+    public double getFoodNeed() {
+        return foodNeed;
+    }
+
+    public void setFoodNeed(double foodNeed) {
+        this.foodNeed = foodNeed;
+    }
+
+    public int getMaxAge() {
+        return maxAge;
+    }
+
+    public void setMaxAge(int maxAge) {
+        this.maxAge = maxAge;
+    }
 }
-
-

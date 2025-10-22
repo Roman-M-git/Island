@@ -3,6 +3,8 @@ package Fauna.AllPredators;
 import Fauna.AllHerbivores.Herbivores;
 import Fauna.Animal;
 
+import java.util.List;
+
 public abstract class Predators extends Animal {
 
     public Predators(String name, double maxWeight, int maxCountOnCell, int speed, double foodNeed) {
@@ -16,17 +18,18 @@ public abstract class Predators extends Animal {
     @Override
     public void eat(List<Animal> others) {
         for (Animal target : others) {
-            if (target instanceof Herbivores && target.alive) {
+            if (target instanceof Herbivores && target.isAlive()) {
                 double chance = getEatChance(target);
                 if (random.nextDouble() < chance) {
-                    System.out.println(name + " съел " + target.name);
-                    hunger = 1.0;
-                    target.alive = false;
+                    System.out.println(getName() + " съел " + target.getName());
+                    setHunger(1.0);
+                    target.setAlive(false);
                     return;
                 }
             }
         }
-        hunger -= 0.2; // если никого не съел — становится голоднее
+        // если никого не съел — становится голоднее
+        setHunger(getHunger() - 0.2);
     }
 
     /**
