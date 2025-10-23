@@ -21,7 +21,7 @@ public abstract class Predators extends Animal {
             if (target instanceof Herbivores && target.isAlive()) {
                 double chance = getEatChance(target);
                 if (random.nextDouble() < chance) {
-                    System.out.println(getName() + " съел " + target.getName());
+                    System.out.println(getName() + " attacked and ate the " + target.getName());
                     setHunger(1.0);
                     target.setAlive(false);
                     return;
