@@ -2,25 +2,26 @@ package Fauna;
 
 import MapEngine.Coordinate;
 import MapEngine.Island;
+import SupportClasses.Statistics;
 
 import java.util.List;
 import java.util.Random;
 
 public abstract class Animal {
     // ==== Основные характеристики ====
-    protected String name;                // Название животного
-    protected double weight;              // Текущий вес
-    protected double maxWeight;           // Максимальный вес особи
-    protected int maxCountOnCell;         // Сколько животных может быть на одной клетке
-    protected int speed;                  // На сколько клеток может двигаться
-    protected double foodNeed;            // Сколько нужно еды для насыщения
-    protected boolean alive = true;       // Жив ли
+    protected String name;
+    protected double weight;
+    protected double maxWeight;
+    protected int maxCountOnCell;
+    protected int speed;
+    protected double foodNeed;
+    protected boolean alive = true;
 
     // ==== Состояние ====
-    protected double hunger;              // уровень сытости (0 = голоден)
-    protected int age = 0;                // возраст
-    protected int maxAge;                 // максимум лет (можно задать в наследниках)
-    protected Coordinate position;        // текущие координаты на острове
+    protected double hunger;
+    protected int age = 0;
+    protected int maxAge;
+    protected Coordinate position;
 
     protected final Random random = new Random();
 
@@ -33,6 +34,11 @@ public abstract class Animal {
         this.speed = speed;
         this.foodNeed = foodNeed;
         this.hunger = 1.0;
+
+        // ✅ Регистрируем животное в статистике при создании (только если живое)
+        if (alive) {
+            Statistics.registerAnimal(this);
+        }
     }
 
     // ==== Методы поведения ====
@@ -48,7 +54,7 @@ public abstract class Animal {
         int newY = Math.max(0, Math.min(island.getHeight() - 1, position.y + dy));
 
         position = new Coordinate(newX, newY);
-        System.out.println(name + " moved " + newX + "," + newY);
+//        System.out.println(name + " moved to " + newX + "," + newY);
     }
 
     /** Поесть — базовый вариант (будет переопределяться у потомков) */
@@ -61,7 +67,11 @@ public abstract class Animal {
 
         if (random.nextDouble() < 0.3) { // шанс на размножение
             Animal child = createChild();
-            System.out.println(name + " has multiplied → " + child.getName());
+
+            // ✅ Регистрируем новорождённого в статистике
+            Statistics.markReproduce(child);
+
+//            System.out.println(name + " has multiplied → " + child.getName());
             return child;
         }
         return null;
@@ -69,9 +79,14 @@ public abstract class Animal {
 
     /** Умереть от старости или голода */
     public void deathFromOldAge() {
+        if (!alive) return;
+
         if (age > maxAge || hunger <= 0) {
             alive = false;
-            System.out.println(name + " RIP");
+//            System.out.println(name + " RIP");
+
+            // ✅ Учитываем смерть (естественную, не съеденного)
+            Statistics.markDeath(this, false);
         }
     }
 
@@ -80,7 +95,7 @@ public abstract class Animal {
         if (!alive) return;
 
         age++;
-        hunger -= 0.1; // голод накапливается
+        hunger -= 0.1;
         move(island);
         deathFromOldAge();
     }

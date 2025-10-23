@@ -1,6 +1,7 @@
 package MapEngine;
 
 import Fauna.Animal;
+import Fauna.Herbs;
 
 public class Island {
 
@@ -43,6 +44,11 @@ public class Island {
             cell.addAnimal(animal);
             animal.setPosition(new Coordinate(x, y)); // 🟢 фикс: обновляем позицию животного
         }
+    }
+
+    /** Добавить растение в клетку по координатам */
+    public void addPlant(Herbs herb, int x, int y) {
+        cells[y][x].addPlant(herb);
     }
 
     // ✅ Добавлены геттеры для работы Animal.move()

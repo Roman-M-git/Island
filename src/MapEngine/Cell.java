@@ -1,6 +1,8 @@
 package MapEngine;
 
 import Fauna.Animal;
+import Fauna.Herbs;
+import Fauna.AllHerbivores.Herbivores;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -8,8 +10,9 @@ import java.util.List;
 
 public class Cell {
 
-    private final Coordinate coordinate;         // координаты клетки
-    private final List<Animal> animals = new ArrayList<>(); // список всех животных в клетке
+    private final Coordinate coordinate;                  // координаты клетки
+    private final List<Animal> animals = new ArrayList<>(); // животные в клетке
+    private final List<Herbs> plants  = new ArrayList<>();  // растения в клетке
 
     public Cell(Coordinate coordinate) {
         this.coordinate = coordinate;
@@ -17,10 +20,33 @@ public class Cell {
 
     /** Добавить животное в клетку */
     public void addAnimal(Animal animal) {
-        if (animal != null) {
-            animals.add(animal);
-            animal.setPosition(coordinate);
+        if (animal == null) return;
+
+        // 🔹 Считаем, сколько животных этого же вида уже в клетке
+        long sameTypeCount = animals.stream()
+                .filter(a -> a.getClass() == animal.getClass())
+                .count();
+
+        // 🔹 Проверяем лимит
+        if (sameTypeCount >= animal.getMaxCountOnCell()) {
+            // клетка переполнена этим видом — не добавляем
+            return;
         }
+
+        animals.add(animal);
+        animal.setPosition(coordinate);
+    }
+
+    /** Добавить растение в клетку */
+    public void addPlant(Herbs herb) {
+        if (herb != null) {
+            plants.add(herb);
+        }
+    }
+
+    /** Дать доступ к растениям (если понадобится) */
+    public List<Herbs> getPlants() {
+        return plants;
     }
 
     /** Вернуть всех животных в клетке */
@@ -32,7 +58,15 @@ public class Cell {
     public void liveCycle(Island island) {
         // 1️⃣ — Еда
         for (Animal animal : new ArrayList<>(animals)) {
-            if (animal.isAlive()) {
+            if (!animal.isAlive()) continue;
+
+            if (animal instanceof Herbivores herbivore) {
+                // Травоядные сначала пытаются съесть траву
+                boolean ate = herbivore.tryEatPlants(plants);
+                if (!ate) {
+                    herbivore.eat(animals);
+                }
+            } else {
                 animal.eat(animals);
             }
         }
@@ -41,7 +75,6 @@ public class Cell {
         List<Animal> newborns = new ArrayList<>();
         for (Animal animal : animals) {
             if (animal.isAlive()) {
-                // ищем особей того же вида
                 List<Animal> sameSpecies = animals.stream()
                         .filter(a -> a.getClass() == animal.getClass() && a.isAlive())
                         .toList();

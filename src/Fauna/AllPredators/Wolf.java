@@ -1,6 +1,7 @@
 package Fauna.AllPredators;
 
 import Fauna.Animal;
+import MapEngine.Coordinate;
 
 public class Wolf extends Predators {
 
@@ -22,6 +23,11 @@ public class Wolf extends Predators {
 
     @Override
     protected Animal createChild() {
-        return new Wolf();
+        Wolf baby = new Wolf();
+        // Копируем позицию родителя, если она установлена
+        if (this.getPosition() != null) {
+            baby.setPosition(new Coordinate(this.getPosition().x, this.getPosition().y));
+        }
+        return baby;
     }
 }
