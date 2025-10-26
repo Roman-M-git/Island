@@ -25,6 +25,7 @@ public class Main {
         }
         System.out.println("\uD83C\uDF3F Added " + grassCount + " grass patches to the map.");
 
+
         // Добавляем 2 волков
         int wolfCount = 30;
         for (int i = 0; i < wolfCount; i++) {
@@ -66,6 +67,13 @@ public class Main {
 
             // Вывод статистики после каждого шага
             Statistics.print();
+            island.printMap();
+            System.out.println("💀 " + Statistics.getDeathsThisStep() + " animals died this step.");
+
         }
+        // После всех шагов
+        System.out.println("\n===== FINAL SUMMARY =====");
+        Statistics.print();
+        System.out.println("=========================");
     }
 }

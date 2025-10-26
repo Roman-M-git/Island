@@ -18,7 +18,7 @@ public abstract class Animal {
     protected boolean alive = true;
 
     // ==== Состояние ====
-    protected double hunger;
+    protected double hunger;  // 1.0 = сыт, 0.0 = умирает
     protected int age = 0;
     protected int maxAge;
     protected Coordinate position;
@@ -35,17 +35,48 @@ public abstract class Animal {
         this.foodNeed = foodNeed;
         this.hunger = 1.0;
 
-        // ✅ Регистрируем животное в статистике при создании (только если живое)
-        if (alive) {
-            Statistics.registerAnimal(this);
+        // ✅ Регистрируем животное в статистике
+        Statistics.registerAnimal(this);
+    }
+
+    // ==== Логика жизни ====
+
+    /** Один шаг жизни животного */
+    public void liveCycle(Island island) {
+        if (!alive) return;
+
+        age++;
+        decreaseHunger();
+        move(island);
+        deathCheck();
+    }
+
+    /** Уменьшаем уровень сытости каждый шаг */
+    protected void decreaseHunger() {
+        hunger -= 0.1; // теряет 10% сытости за шаг
+        if (hunger < 0) hunger = 0;
+    }
+
+    /** Проверка смерти от старости или голода */
+    protected void deathCheck() {
+        if (!alive) return;
+
+        if (hunger <= 0) {
+            alive = false;
+            Statistics.markDeath(this, false);
+           // System.out.println(name + " died of hunger ☠️");
+        } else if (age >= maxAge) {
+            alive = false;
+            Statistics.markDeath(this, false);
+           // System.out.println(name + " died of old age 🕯️");
         }
     }
 
-    // ==== Методы поведения ====
+    // ==== Основные действия ====
 
     /** Двигается в случайном направлении */
     public void move(Island island) {
-        if (!alive) return;
+        if (!alive || position == null) return;
 
         int dx = random.nextInt(speed * 2 + 1) - speed;
         int dy = random.nextInt(speed * 2 + 1) - speed;
@@ -54,63 +85,30 @@ public abstract class Animal {
         int newY = Math.max(0, Math.min(island.getHeight() - 1, position.y + dy));
 
         position = new Coordinate(newX, newY);
-//        System.out.println(name + " moved to " + newX + "," + newY);
     }
 
-    /** Поесть — базовый вариант (будет переопределяться у потомков) */
+    /** Еда — реализуется в наследниках */
     public abstract void eat(List<Animal> others);
 
-    /** Размножение — если есть пара на клетке */
+    /** Размножение — если рядом есть партнёр */
     public Animal reproduce(List<Animal> sameSpecies) {
-        if (!alive) return null;
-        if (sameSpecies.size() < 2) return null;
+        if (!alive || sameSpecies.size() < 2) return null;
 
-        if (random.nextDouble() < 0.3) { // шанс на размножение
+        if (random.nextDouble() < 0.3) { // шанс 30%
             Animal child = createChild();
-
-            // ✅ Регистрируем новорождённого в статистике
             Statistics.markReproduce(child);
-
-//            System.out.println(name + " has multiplied → " + child.getName());
             return child;
         }
         return null;
     }
 
-    /** Умереть от старости или голода */
-    public void deathFromOldAge() {
-        if (!alive) return;
-
-        if (age > maxAge || hunger <= 0) {
-            alive = false;
-//            System.out.println(name + " RIP");
-
-            // ✅ Учитываем смерть (естественную, не съеденного)
-            Statistics.markDeath(this, false);
-        }
-    }
-
-    /** Проходит один "такт" жизни */
-    public void liveCycle(Island island) {
-        if (!alive) return;
-
-        age++;
-        hunger -= 0.1;
-        move(island);
-        deathFromOldAge();
-    }
-
-    /** Создание детеныша (реализуется в конкретном классе) */
+    /** Абстрактный метод создания детёныша */
     protected abstract Animal createChild();
 
     // ==== Геттеры и сеттеры ====
 
     public String getName() {
         return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
     }
 
     public boolean isAlive() {

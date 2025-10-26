@@ -6,7 +6,7 @@ import MapEngine.Coordinate;
     public class Boa extends Predators {
 
         public Boa() {
-            super("Fox", 30, 30, 4, 5);
+            super("Boa", 30, 30, 4, 5);
             setMaxAge(40);
         }
 

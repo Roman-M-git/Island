@@ -16,6 +16,9 @@ public class Statistics {
     }
 
     private static final Map<String, StatRecord> stats = new HashMap<>();
+    private static int deathsLastStep = 0;
+    private static int previousTotalDeaths = 0;
+
 
     public static void reset() {
         stats.clear();
@@ -98,4 +101,19 @@ public class Statistics {
             default -> false;
         };
     }
+    public static int getTotalDeaths() {
+        int total = 0;
+        for (StatRecord record : stats.values()) {
+            total += record.rip;
+        }
+        return total;
+    }
+
+    public static int getDeathsThisStep() {
+        int totalNow = getTotalDeaths();
+        deathsLastStep = totalNow - previousTotalDeaths;
+        previousTotalDeaths = totalNow;
+        return Math.max(deathsLastStep, 0);
+    }
+
 }
