@@ -86,18 +86,38 @@ public class Cell {
         }
         animals.addAll(newborns);
 
-        // 3️⃣ — Передвижение
+        // 3️⃣ — Передвижение (без ConcurrentModification)
+        List<Animal> toMove = new ArrayList<>();
+
         for (Animal animal : new ArrayList<>(animals)) {
-            if (animal.isAlive()) {
-                animal.move(island);
+            if (!animal.isAlive()) continue;
+
+            Coordinate oldPos = animal.getPosition();
+            animal.move(island);
+            Coordinate newPos = animal.getPosition();
+
+            // Если животное действительно переместилось
+            if (oldPos.x != newPos.x || oldPos.y != newPos.y) {
+                toMove.add(animal);
             }
         }
+
+// После цикла переносим животных
+        for (Animal animal : toMove) {
+            animals.remove(animal); // удаляем из старой клетки
+            Cell newCell = island.getCell(animal.getPosition().x, animal.getPosition().y);
+            if (newCell != null) {
+                newCell.addAnimal(animal);
+            }
+        }
+
+
 
         // 4️⃣ — Старение и смерть
         Iterator<Animal> iterator = animals.iterator();
         while (iterator.hasNext()) {
             Animal a = iterator.next();
-            a.deathFromOldAge();
+            a.liveCycle(island); // вызывает и старение, и проверку смерти
             if (!a.isAlive()) {
                 iterator.remove();
             }

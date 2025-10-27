@@ -51,6 +51,54 @@ public class Island {
         cells[y][x].addPlant(herb);
     }
 
+    /** Отобразить остров в консоли */
+    public void printMap() {
+        System.out.println("\n===== ISLAND MAP =====");
+
+        for (int y = 0; y < height; y++) {
+            StringBuilder row = new StringBuilder();
+
+            for (int x = 0; x < width; x++) {
+                Cell cell = cells[y][x];
+
+                if (!cell.getAnimals().isEmpty()) {
+                    // Берем первое животное в клетке для отображения
+                    String symbol = getAnimalSymbol(cell.getAnimals().get(0));
+                    row.append(symbol).append(" ");
+                } else if (!cell.getPlants().isEmpty()) {
+                    row.append("🌿 "); // трава
+                } else {
+                    row.append("⬜ "); // пустая клетка
+                }
+            }
+
+            System.out.println(row);
+        }
+    }
+
+    /** Возвращает эмодзи по типу животного */
+    private String getAnimalSymbol(Fauna.Animal animal) {
+        return switch (animal.getName()) {
+            case "Rabbit" -> "🐇";
+            case "Fox" -> "🦊";
+            case "Wolf" -> "🐺";
+            case "Boa" -> "🐍";
+            case "Bear" -> "\uD83D\uDC3B";
+            case "Eagle" -> "\uD83E\uDD85";
+            case "Horse" -> "\uD83D\uDC0E";
+            case "Deer" -> "\uD83E\uDD8C";
+            case "Mouse" -> "\uD83D\uDC01";
+            case "Goat" -> "\uD83D\uDC10";
+            case "Sheep" -> "\uD83D\uDC11";
+            case "Boar" -> "\uD83D\uDC17";
+            case "Buffalo" -> "\uD83D\uDC03";
+            case "Duck" -> "\uD83E\uDD86";
+            case "Caterpillar" -> "\uD83D\uDC1B";
+            default -> "❓";
+        };
+    }
+
+
     // ✅ Добавлены геттеры для работы Animal.move()
     public int getWidth() {
         return width;
