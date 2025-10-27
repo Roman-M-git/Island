@@ -8,70 +8,81 @@ import SupportClasses.Statistics;
 import java.util.Random;
 
 public class Main {
-    public static void main(String[] args) {
 
+    public static void main(String[] args) {
+        // Создаём остров 100x20 клеток
         Island island = new Island(100, 20);
+        Random random = new Random();
+
+        // Сбрасываем старую статистику перед стартом симуляции
         Statistics.reset();
 
-        //  Используем универсальный метод для добавления животных:
-        addAnimals(island, Wolf.class, 30, "\uD83D\uDC3A");
-        addAnimals(island, Fox.class, 30, "\uD83E\uDD8A");
-        addAnimals(island, Boa.class, 30, "\uD83D\uDC0D");
-        addAnimals(island, Bear.class, 5, "\uD83D\uDC3B");
-        addAnimals(island, Eagle.class, 20, "\uD83E\uDD85");
-        addAnimals(island, Rabbit.class, 150, "\uD83D\uDC07");
-        addAnimals(island, Horse.class, 20, "\uD83D\uDC0E");
-        addAnimals(island, Deer.class, 20, "\uD83E\uDD8C");
-        addAnimals(island, Mouse.class, 100, "\uD83D\uDC01");
-        addAnimals(island, Goat.class, 140, "\uD83D\uDC10");
-        addAnimals(island, Sheep.class, 140, "\uD83D\uDC11");
-        addAnimals(island, Boar.class, 50, "\uD83D\uDC17");
-        addAnimals(island, Buffalo.class, 50, "\uD83D\uDC03");
-        addAnimals(island, Duck.class, 50, "\uD83E\uDD86");
-        addAnimals(island, Caterpillar.class, 50, "\uD83D\uDC1B");
+        // Добавляем траву
+        addHerbs(island, 200, random);
+
+        // Добавляем животных
+        addAnimals(island, 30, Wolf.class, random, "🐺");
+        addAnimals(island, 150, Rabbit.class, random, "🐇");
+        addAnimals(island, 30, Fox.class, random, "🦊");
+        addAnimals(island, 30, Boa.class, random, "🐍");
+        addAnimals(island, 5, Bear.class, random, "🐻");
+        addAnimals(island, 20, Eagle.class, random, "🦅");
+        addAnimals(island, 20, Horse.class, random, "🐎");
+        addAnimals(island, 20, Deer.class, random, "🦌");
+        addAnimals(island, 100, Mouse.class, random, "🐁");
+        addAnimals(island, 140, Goat.class, random, "🐐");
+        addAnimals(island, 140, Sheep.class, random, "🐑");
+        addAnimals(island, 50, Boar.class, random, "🐗");
+        addAnimals(island, 50, Buffalo.class, random, "🐃");
+        addAnimals(island, 50, Duck.class, random, "🦆");
+        addAnimals(island, 50, Caterpillar.class, random, "🐛");
 
         // Симуляция 10 шагов
         for (int i = 1; i <= 10; i++) {
             System.out.println("\n===== Step " + i + " =====");
+
+            // 🟢 Сбрасываем только счётчик съеденной травы перед новым шагом
             Statistics.resetGrassCounter();
+
             island.simulateStep();
+
+            // Вывод статистики после каждого шага
             Statistics.print();
             island.printMap();
             System.out.println("💀 " + Statistics.getDeathsThisStep() + " animals died this step.");
         }
 
+        // После всех шагов
         System.out.println("\n===== FINAL SUMMARY =====");
         Statistics.print();
         System.out.println("=========================");
     }
 
-    // универсальный метод чтобы не писать для каждого животного подобный код:
-//    Добавляем Caterpillar
-//    int caterpillarCount = 50;
-//        for (int i = 0; i < caterpillarCount; i++) {
-//        Caterpillar caterpillar = new Caterpillar();
-//        int x = random.nextInt(island.getWidth());
-//        int y = random.nextInt(island.getHeight());
-//        island.addAnimal(caterpillar, x, y);
-//        Statistics.registerAnimal(caterpillar); //  учитываем в статистике
-//}
-//        System.out.println("\uD83D\uDC1B Added " + caterpillarCount + " caterpillar to the map.");
-
-private static <T extends Animal> void addAnimals(
-        Island island, Class<T> clazz, int count, String emoji) {
-    Random random = new Random();
-    for (int i = 0; i < count; i++) {
-        try {
-            T animal = clazz.getDeclaredConstructor().newInstance();
+    // Метод для добавления травы
+    private static void addHerbs(Island island, int count, Random random) {
+        for (int i = 0; i < count; i++) {
+            Herbs herbs = new Herbs();
             int x = random.nextInt(island.getWidth());
             int y = random.nextInt(island.getHeight());
-            island.addAnimal(animal, x, y);
-            Statistics.registerAnimal(animal);
-        } catch (Exception e) {
-            e.printStackTrace();
+            island.addPlant(herbs, x, y);
         }
+        System.out.println("🌿 Added " + count + " grass patches to the map.");
     }
-    System.out.printf("%s Added %d %s to the map.%n",
-            emoji, count, clazz.getSimpleName().toLowerCase() + "s");
-}
+
+    // Метод для добавления животных
+    private static void addAnimals(Island island, int count, Class<? extends Animal> animalClass, Random random, String emoji) {
+        for (int i = 0; i < count; i++) {
+            try {
+                Animal animal = animalClass.getDeclaredConstructor().newInstance();
+                int x = random.nextInt(island.getWidth());
+                int y = random.nextInt(island.getHeight());
+                island.addAnimal(animal, x, y);
+                Statistics.registerAnimal(animal);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        System.out.println(emoji + " Added " + count + " " + animalClass.getSimpleName() + "(s) to the map.");
+    }
+
 }
