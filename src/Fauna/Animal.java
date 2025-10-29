@@ -96,7 +96,15 @@ public abstract class Animal {
 
         if (random.nextDouble() < 0.3) { // шанс 30%
             Animal child = createChild();
+
+            // ✅ ставим ту же позицию, что у родителя
+            if (this.position != null) {
+                child.setPosition(new Coordinate(this.position.x, this.position.y));
+            }
+
+            // ✅ регистрируем в статистике
             Statistics.markReproduce(child);
+
             return child;
         }
         return null;

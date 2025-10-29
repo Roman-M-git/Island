@@ -3,11 +3,16 @@ package MapEngine;
 import Fauna.Animal;
 import Fauna.Herbs;
 
+import java.util.concurrent.*;
+
 public class Island {
 
     private final int width;
     private final int height;
     private final Cell[][] cells;
+
+    // Один общий пул потоков для острова
+    private final ExecutorService pool;
 
     public Island(int width, int height) {
         this.width = width;
@@ -20,6 +25,9 @@ public class Island {
                 cells[y][x] = new Cell(new Coordinate(x, y));
             }
         }
+
+        // создаём пул потоков под число процессоров
+        this.pool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     }
 
     /** Возвращает клетку по координатам */
@@ -28,11 +36,28 @@ public class Island {
         return cells[y][x];
     }
 
-    /** Симуляция одного шага (все клетки "живут") */
+    /** Симуляция одного шага (все клетки работают параллельно) */
     public void simulateStep() {
+        CompletionService<Void> completionService = new ExecutorCompletionService<>(pool);
+
+        int taskCount = 0;
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                cells[y][x].liveCycle(this);
+                Cell cell = cells[y][x];
+                completionService.submit(() -> {
+                    cell.liveCycle(this);
+                    return null;
+                });
+                taskCount++;
+            }
+        }
+
+        for (int i = 0; i < taskCount; i++) {
+            try {
+                completionService.take(); // ждём, пока каждая задача завершится
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
             }
         }
     }
@@ -42,16 +67,19 @@ public class Island {
         Cell cell = getCell(x, y);
         if (cell != null) {
             cell.addAnimal(animal);
-            animal.setPosition(new Coordinate(x, y)); // 🟢 фикс: обновляем позицию животного
+            animal.setPosition(new Coordinate(x, y));
         }
     }
 
     /** Добавить растение в клетку по координатам */
     public void addPlant(Herbs herb, int x, int y) {
-        cells[y][x].addPlant(herb);
+        Cell cell = getCell(x, y);
+        if (cell != null) {
+            cell.addPlant(herb);
+        }
     }
 
-    /** Отобразить остров в консоли */
+    /** Печать карты (безопасный снимок данных) */
     public void printMap() {
         System.out.println("\n===== ISLAND MAP =====");
 
@@ -60,23 +88,22 @@ public class Island {
 
             for (int x = 0; x < width; x++) {
                 Cell cell = cells[y][x];
+                String symbol = "⬜ ";
 
-                if (!cell.getAnimals().isEmpty()) {
-                    // Берем первое животное в клетке для отображения
-                    String symbol = getAnimalSymbol(cell.getAnimals().get(0));
-                    row.append(symbol).append(" ");
+                var animals = cell.getAnimals();
+                if (!animals.isEmpty()) {
+                    symbol = getAnimalSymbol(animals.get(0)) + " ";
                 } else if (!cell.getPlants().isEmpty()) {
-                    row.append("🌿 "); // трава
-                } else {
-                    row.append("⬜ "); // пустая клетка
+                    symbol = "🌿 ";
                 }
-            }
 
+                row.append(symbol);
+            }
             System.out.println(row);
         }
     }
 
-    /** Возвращает эмодзи по типу животного */
+    /** Эмодзи для животных */
     private String getAnimalSymbol(Fauna.Animal animal) {
         return switch (animal.getName()) {
             case "Rabbit" -> "🐇";
@@ -98,8 +125,7 @@ public class Island {
         };
     }
 
-
-    // ✅ Добавлены геттеры для работы Animal.move()
+    /** Геттеры для размеров */
     public int getWidth() {
         return width;
     }
@@ -107,4 +133,17 @@ public class Island {
     public int getHeight() {
         return height;
     }
-}
+
+    /** Завершить все потоки (при остановке программы) */
+    public void shutdown() {
+        pool.shutdown();
+        try {
+            if (!pool.awaitTermination(5, TimeUnit.SECONDS)) {
+                pool.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            pool.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+    }
