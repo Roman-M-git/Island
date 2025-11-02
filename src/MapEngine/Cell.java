@@ -4,123 +4,157 @@ import Fauna.Animal;
 import Fauna.Herbs;
 import Fauna.AllHerbivores.Herbivores;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 public class Cell {
 
-    private final Coordinate coordinate;                  // координаты клетки
-    private final List<Animal> animals = new ArrayList<>(); // животные в клетке
-    private final List<Herbs> plants  = new ArrayList<>();  // растения в клетке
+    private final Coordinate coordinate;                     // координаты клетки
+    private final List<Animal> animals = new ArrayList<>();   // животные в клетке
+    private final List<Herbs> plants = new ArrayList<>();     // растения в клетке
+    private final Queue<Animal> movedIn = new ConcurrentLinkedQueue<>(); // очередь прибывших
+
+    private final ReentrantLock lock = new ReentrantLock();   // 🔒 для синхронизации
 
     public Cell(Coordinate coordinate) {
         this.coordinate = coordinate;
     }
 
-    /** Добавить животное в клетку */
+    /** Добавить животное в клетку (безопасно для многопоточности) */
     public void addAnimal(Animal animal) {
         if (animal == null) return;
 
-        // 🔹 Считаем, сколько животных этого же вида уже в клетке
-        long sameTypeCount = animals.stream()
-                .filter(a -> a.getClass() == animal.getClass())
-                .count();
+        lock.lock();
+        try {
+            long sameTypeCount = animals.stream()
+                    .filter(a -> a.getClass() == animal.getClass())
+                    .count();
 
-        // 🔹 Проверяем лимит
-        if (sameTypeCount >= animal.getMaxCountOnCell()) {
-            // клетка переполнена этим видом — не добавляем
-            return;
+            if (sameTypeCount < animal.getMaxCountOnCell()) {
+                animals.add(animal);
+                animal.setPosition(coordinate);
+            }
+        } finally {
+            lock.unlock();
         }
-
-        animals.add(animal);
-        animal.setPosition(coordinate);
     }
 
-    /** Добавить растение в клетку */
+    /** Используется другими потоками для прибытия животных */
+    public void enqueueIncoming(Animal animal) {
+        if (animal != null) movedIn.add(animal);
+    }
+
+    /** Добавить растение (потокобезопасно) */
     public void addPlant(Herbs herb) {
         if (herb != null) {
-            plants.add(herb);
+            lock.lock();
+            try {
+                plants.add(herb);
+            } finally {
+                lock.unlock();
+            }
         }
     }
 
-    /** Дать доступ к растениям (если понадобится) */
-    public List<Herbs> getPlants() {
-        return plants;
-    }
-
-    /** Вернуть всех животных в клетке */
     public List<Animal> getAnimals() {
-        return animals;
+        lock.lock();
+        try {
+            return new ArrayList<>(animals); // возвращаем копию
+        } finally {
+            lock.unlock();
+        }
     }
 
-    /** Один цикл жизни всех животных в этой клетке */
+    public List<Herbs> getPlants() {
+        lock.lock();
+        try {
+            return new ArrayList<>(plants);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /** Один цикл жизни клетки (выполняется в отдельном потоке) */
     public void liveCycle(Island island) {
-        // 1️⃣ — Еда
-        for (Animal animal : new ArrayList<>(animals)) {
-            if (!animal.isAlive()) continue;
+        lock.lock();
+        try {
+            // 1️⃣ Еда
+            List<Animal> snapshot = new ArrayList<>(animals);
+            for (Animal animal : snapshot) {
+                if (!animal.isAlive()) continue;
 
-            if (animal instanceof Herbivores herbivore) {
-                // Травоядные сначала пытаются съесть траву
-                boolean ate = herbivore.tryEatPlants(plants);
-                if (!ate) {
-                    herbivore.eat(animals);
-                }
-            } else {
-                animal.eat(animals);
-            }
-        }
-
-        // 2️⃣ — Размножение
-        List<Animal> newborns = new ArrayList<>();
-        for (Animal animal : animals) {
-            if (animal.isAlive()) {
-                List<Animal> sameSpecies = animals.stream()
-                        .filter(a -> a.getClass() == animal.getClass() && a.isAlive())
-                        .toList();
-                Animal child = animal.reproduce(sameSpecies);
-                if (child != null) {
-                    newborns.add(child);
+                if (animal instanceof Herbivores herbivore) {
+                    boolean ate = herbivore.tryEatPlants(plants);
+                    if (!ate) {
+                        herbivore.eat(snapshot);
+                    }
+                } else {
+                    animal.eat(snapshot);
                 }
             }
-        }
-        animals.addAll(newborns);
 
-        // 3️⃣ — Передвижение (без ConcurrentModification)
-        List<Animal> toMove = new ArrayList<>();
+            // 2️⃣ Размножение
+            List<Animal> newborns = new ArrayList<>();
+            Map<Class<?>, List<Animal>> byType = animals.stream()
+                    .filter(Animal::isAlive)
+                    .collect(Collectors.groupingBy(Object::getClass));
 
-        for (Animal animal : new ArrayList<>(animals)) {
-            if (!animal.isAlive()) continue;
-
-            Coordinate oldPos = animal.getPosition();
-            animal.move(island);
-            Coordinate newPos = animal.getPosition();
-
-            // Если животное действительно переместилось
-            if (oldPos.x != newPos.x || oldPos.y != newPos.y) {
-                toMove.add(animal);
+            for (List<Animal> group : byType.values()) {
+                for (Animal parent : group) {
+                    Animal child = parent.reproduce(group);
+                    if (child != null) {
+                        child.setPosition(coordinate); // сразу ставим координаты
+                        newborns.add(child);
+                    }
+                }
             }
-        }
+            for (Animal baby : newborns) addAnimal(baby);
 
-// После цикла переносим животных
-        for (Animal animal : toMove) {
-            animals.remove(animal); // удаляем из старой клетки
-            Cell newCell = island.getCell(animal.getPosition().x, animal.getPosition().y);
-            if (newCell != null) {
-                newCell.addAnimal(animal);
+            // 3️⃣ Передвижение — только решение, без изменения чужих клеток
+            List<Animal> toMove = new ArrayList<>();
+            for (Animal animal : new ArrayList<>(animals)) {
+                if (!animal.isAlive()) continue;
+
+                Coordinate oldPos = animal.getPosition();
+                animal.move(island);
+                Coordinate newPos = animal.getPosition();
+
+                if (oldPos.x != newPos.x || oldPos.y != newPos.y) {
+                    toMove.add(animal);
+                }
             }
-        }
 
+            // Убираем уехавших
+            animals.removeAll(toMove);
 
-
-        // 4️⃣ — Старение и смерть
-        Iterator<Animal> iterator = animals.iterator();
-        while (iterator.hasNext()) {
-            Animal a = iterator.next();
-            a.liveCycle(island); // вызывает и старение, и проверку смерти
-            if (!a.isAlive()) {
-                iterator.remove();
+            // Передаём их в новые клетки через очередь
+            for (Animal moving : toMove) {
+                Cell target = island.getCell(moving.getPosition().x, moving.getPosition().y);
+                if (target != null) {
+                    target.enqueueIncoming(moving);
+                }
             }
+
+            // 4️⃣ Старение и смерть
+            Iterator<Animal> iterator = animals.iterator();
+            while (iterator.hasNext()) {
+                Animal a = iterator.next();
+                a.liveCycle(island);
+                if (!a.isAlive()) {
+                    iterator.remove();
+                }
+            }
+
+            // 5️⃣ Приём прибывших животных (в конце фазы)
+            Animal arrived;
+            while ((arrived = movedIn.poll()) != null) {
+                addAnimal(arrived);
+            }
+
+        } finally {
+            lock.unlock();
         }
     }
 
