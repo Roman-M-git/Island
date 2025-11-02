@@ -17,18 +17,11 @@ public abstract class Herbivores extends Animal {
      */
     @Override
     public void eat(List<Animal> others) {
-        for (Object other : others) {
-            if (other instanceof Herbs herb && herb.isAlive()) {
-                System.out.println(name + " ate some grass 🌿");
-                herb.beEaten();
-                hunger = 1.0;
+        // Если травы нет — животное голодает и теряет часть сытости
+        hunger -= 0.1;
 
-                // ✅ добавляем запись в статистику
-                Statistics.markGrassEaten(this);
-
-                return;
-            }
-        }
+        // Но уровень сытости не должен падать ниже нуля
+        if (hunger < 0) hunger = 0;
     }
 
     /**
